@@ -1,196 +1,170 @@
 service:
-  name: serverless-capstone-project
+  name: capstone-app
 
 plugins:
   - serverless-webpack
   - serverless-iam-roles-per-function
-  - serverless-plugin-tracing
   - serverless-reqvalidator-plugin
   - serverless-aws-documentation
+
+# Uncomment to enable individual packaging
+# package:
+#   individually: true
 
 provider:
   name: aws
   runtime: nodejs12.x
-  lambdaHashingVersion: '20201221'
 
   stage: ${opt:stage, 'dev'}
-  region: ${opt:region, 'us-east-1'}
-
-  environment:
-    TODOS_TABLE: Todos-${self:provider.stage}
-    TODOS_BY_USER_INDEX: TodosByUserIndex
-    ATTACHMENTS_S3_BUCKET: serverless-c4-todo-images-a1b2c3d4
-    SIGNED_URL_EXPIRATION: 300
-    AUTH_0_JWKS_URL: https://dev--0e2i-ly.us.auth0.com/.well-known/jwks.json
+  region: ${opt:region, 'eu-west-2'}
+  randomnum: "457653846587"
 
   tracing:
     lambda: true
     apiGateway: true
+
+  environment:
+    MEALS_TABLE: Meals-${self:provider.stage}
+    USER_ID_INDEX: UserIdIndex
+    IMAGES_S3_BUCKET: serverless-meal-images-${self:provider.randomnum}-${self:provider.stage}
+    SIGNED_URL_EXPIRATION: 300
+
 custom:
+  serverless-iam-roles-per-function:
+    defaultInherit: true
+
   documentation:
     api:
       info:
-        version: '1.0.0'
-        title: serverless-todo-api
-        description: This-is-serverless-todo-api
+        version: v1.0.0
+        title: Serverless Meal Diary Application
+        description: Serverless application for users to manage their MEAL items
     models:
-      - name: CreateTodoRequest
-        contentType: "application/json"
-        schema:
-          required:
-            - name
-            - dueDate
-          properties:
-            name:
-              minLength: 5
-              type: string
-            dueDate:
-              type: string
-      - name: UpdateTodoRequest
-        contentType: "application/json"
-        schema:
-          required:
-            - name
-            - dueDate
-            - done
-          properties:
-            name:
-              minLength: 1
-              type: string
-            dueDate:
-              type: string
-            done:
-              type: boolean  
+      - name: MealCreateRequest
+        contentType: application/json
+        schema: ${file(models/create-meal-request.json)}
+      - name: MealUpdateRequest
+        contentType: application/json
+        schema: ${file(models/update-meal-request.json)}
+
 functions:
   Auth:
     handler: src/lambda/auth/auth0Authorizer.handler
-  GetTodos:
-    handler: src/lambda/http/getTodos.handler
+
+  GetMeals:
+    handler: src/lambda/http/getMeals.handler
     events:
       - http:
           method: get
-          path: todos
+          path: meals
           cors: true
           authorizer: Auth
-    iamRoleStatementsInherit: true
     iamRoleStatements:
       - Effect: Allow
         Action:
           - dynamodb:Query
-        Resource: arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.TODOS_TABLE}/index/${self:provider.environment.TODOS_BY_USER_INDEX}
+        Resource: arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.MEALS_TABLE}
       - Effect: Allow
         Action:
-          - xray:GetSamplingRules
-          - xray:GetSamplingTargets
-          - xray:GetSamplingStatisticSummaries
-          - xray:BatchGetTraces
-          - xray:GetServiceGraph
-          - xray:GetTraceGraph
-          - xray:GetTraceSummaries
-          - xray:GetGroups
-          - xray:GetGroup
-          - xray:PutTraceSegments
+          - dynamodb:Query
+        Resource: arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.MEALS_TABLE}/index/${self:provider.environment.USER_ID_INDEX}
+      - Effect: Allow
+        Action:
+          - "xray:PutTraceSegments"
+          - "xray:PutTelemetryRecords"
         Resource:
           - "*"
 
-  CreateTodo:
-    handler: src/lambda/http/createTodo.handler
+  CreateMeal:
+    handler: src/lambda/http/createMeal.handler
     events:
       - http:
           method: post
-          path: todos
+          path: meals
           cors: true
           authorizer: Auth
           reqValidatorName: RequestBodyValidator
           documentation:
-            summary: "Add a new todo item into dbmongo"
-            description: "Create a new todo item"
+            summary: Create a new MEAL for a current user
+            description: Create a new MEAL for a current user
             requestModels:
-              "application/json": CreateTodoRequest
-    iamRoleStatementsInherit: true
+              "application/json": MealCreateRequest
     iamRoleStatements:
       - Effect: Allow
         Action:
           - dynamodb:PutItem
-        Resource: arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.TODOS_TABLE}
+        Resource: arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.MEALS_TABLE}
       - Effect: Allow
         Action:
-          - xray:GetSamplingRules
-          - xray:GetSamplingTargets
-          - xray:GetSamplingStatisticSummaries
-          - xray:BatchGetTraces
-          - xray:GetServiceGraph
-          - xray:GetTraceGraph
-          - xray:GetTraceSummaries
-          - xray:GetGroups
-          - xray:GetGroup
-          - xray:PutTraceSegments
+          - dynamodb:PutItem
+        Resource: arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.MEALS_TABLE}/index/${self:provider.environment.USER_ID_INDEX}
+      - Effect: Allow
+        Action:
+          - "xray:PutTraceSegments"
+          - "xray:PutTelemetryRecords"
         Resource:
           - "*"
 
-  UpdateTodo:
-    handler: src/lambda/http/updateTodo.handler
+  UpdateMeal:
+    handler: src/lambda/http/updateMeal.handler
     events:
       - http:
           method: patch
-          path: todos/{todoId}
+          path: meals/{mealId}
           cors: true
           authorizer: Auth
           reqValidatorName: RequestBodyValidator
-          documentation: 
-            summary: 'Edit an exist todo item'
-            description: 'update a todo item'
-            requestModels: 
-              'application/json': UpdateTodoRequest
-    iamRoleStatementsInherit: true
+          documentation:
+            summary: Update a MEAL item created by a current user
+            description: Update a MEAL item created by a current user
+            requestModels:
+              "application/json": MealUpdateRequest
     iamRoleStatements:
       - Effect: Allow
         Action:
           - dynamodb:UpdateItem
           - dynamodb:GetItem
-        Resource: arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.TODOS_TABLE}
+        Resource: arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.MEALS_TABLE}
       - Effect: Allow
         Action:
-          - xray:GetSamplingRules
-          - xray:GetSamplingTargets
-          - xray:GetSamplingStatisticSummaries
-          - xray:BatchGetTraces
-          - xray:GetServiceGraph
-          - xray:GetTraceGraph
-          - xray:GetTraceSummaries
-          - xray:GetGroups
-          - xray:GetGroup
-          - xray:PutTraceSegments
+          - dynamodb:UpdateItem
+          - dynamodb:Query
+        Resource: arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.MEALS_TABLE}/index/${self:provider.environment.USER_ID_INDEX}
+      - Effect: Allow
+        Action:
+          - "xray:PutTraceSegments"
+          - "xray:PutTelemetryRecords"
         Resource:
           - "*"
 
-  DeleteTodo:
-    handler: src/lambda/http/deleteTodo.handler
+  DeleteMeal:
+    handler: src/lambda/http/deleteMeal.handler
     events:
       - http:
           method: delete
-          path: todos/{todoId}
+          path: meals/{mealId}
           cors: true
           authorizer: Auth
-    iamRoleStatementsInherit: true
     iamRoleStatements:
       - Effect: Allow
         Action:
           - dynamodb:DeleteItem
           - dynamodb:GetItem
-        Resource: arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.TODOS_TABLE}
+        Resource: arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.MEALS_TABLE}
       - Effect: Allow
         Action:
-          - xray:GetSamplingRules
-          - xray:GetSamplingTargets
-          - xray:GetSamplingStatisticSummaries
-          - xray:BatchGetTraces
-          - xray:GetServiceGraph
-          - xray:GetTraceGraph
-          - xray:GetTraceSummaries
-          - xray:GetGroups
-          - xray:GetGroup
-          - xray:PutTraceSegments
+          - dynamodb:DeleteItem
+          - dynamodb:Query
+        Resource: arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.MEALS_TABLE}/index/${self:provider.environment.USER_ID_INDEX}
+      - Effect: Allow
+        Action:
+          - s3:GetObject
+          - s3:DeleteObject
+        Resource: arn:aws:s3:::${self:provider.environment.IMAGES_S3_BUCKET}/*
+      - Effect: Allow
+        Action:
+          - "xray:PutTraceSegments"
+          - "xray:PutTelemetryRecords"
         Resource:
           - "*"
 
@@ -199,102 +173,117 @@ functions:
     events:
       - http:
           method: post
-          path: todos/{todoId}/attachment
+          path: meals/{mealId}/attachment
           cors: true
           authorizer: Auth
-    iamRoleStatementsInherit: true
     iamRoleStatements:
-      - Effect: Allow
-        Action:
-          - s3:PutObject
-          - s3:GetObject
-        Resource: arn:aws:s3:::${self:provider.environment.ATTACHMENTS_S3_BUCKET}/*
       - Effect: Allow
         Action:
           - dynamodb:UpdateItem
           - dynamodb:GetItem
-        Resource: arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.TODOS_TABLE}
+          - dynamodb:Query
+        Resource: arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.MEALS_TABLE}
+      - Effect: Allow
+        Action:
+          - dynamodb:Query
+        Resource: arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.MEALS_TABLE}/index/${self:provider.environment.USER_ID_INDEX}
+      - Effect: Allow
+        Action:
+          - s3:PutObject
+          - s3:GetObject
+          - s3:DeleteObject
+        Resource: arn:aws:s3:::${self:provider.environment.IMAGES_S3_BUCKET}/*
+      - Effect: Allow
+        Action:
+          - "xray:PutTraceSegments"
+          - "xray:PutTelemetryRecords"
+        Resource:
+          - "*"
 
 resources:
   Resources:
-    # API Gateway
+    # API
+
     GatewayResponseDefault4XX:
       Type: AWS::ApiGateway::GatewayResponse
       Properties:
         ResponseParameters:
           gatewayresponse.header.Access-Control-Allow-Origin: "'*'"
           gatewayresponse.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
-          gatewayresponse.header.Access-Control-Allow-Methods: "'GET,OPTIONS,POST'"
+          gatewayresponse.header.Access-Control-Allow-Methods: "'GET,OPTIONS,POST,DELETE,PATCH'"
         ResponseType: DEFAULT_4XX
         RestApiId:
           Ref: ApiGatewayRestApi
 
-    # DynamoDB
-    TodoTable:
+    RequestBodyValidator:
+      Type: AWS::ApiGateway::RequestValidator
+      Properties:
+        Name: "request-body-validator"
+        RestApiId:
+          Ref: ApiGatewayRestApi
+        ValidateRequestBody: true
+        ValidateRequestParameters: false
+
+    # Meals
+
+    MealsTable:
       Type: AWS::DynamoDB::Table
       Properties:
         AttributeDefinitions:
-          - AttributeName: userIdnpm
-            AttributeType: S
-          - AttributeName: todoId
+          - AttributeName: mealId
             AttributeType: S
           - AttributeName: createdAt
+            AttributeType: S
+          - AttributeName: userId
             AttributeType: S
         KeySchema:
           - AttributeName: userId
             KeyType: HASH
-          - AttributeName: todoId
+          - AttributeName: mealId
             KeyType: RANGE
         BillingMode: PAY_PER_REQUEST
-        TableName: ${self:provider.environment.TODOS_TABLE}
+        TableName: ${self:provider.environment.MEALS_TABLE}
         LocalSecondaryIndexes:
-          - IndexName: ${self:provider.environment.TODOS_BY_USER_INDEX}
+          - IndexName: ${self:provider.environment.USER_ID_INDEX}
             KeySchema:
               - AttributeName: userId
                 KeyType: HASH
               - AttributeName: createdAt
                 KeyType: RANGE
             Projection:
-              ProjectionType: ALL
+              ProjectionType: ALL # What attributes will be copied to an index
 
-    RequestBodyValidator:
-      Type: AWS::ApiGateway::RequestValidator
+    # Attachments
+
+    AttachmentsBucket:
+      Type: AWS::S3::Bucket
       Properties:
-        Name: 'request-body-validator'
-        RestApiId:
-          Ref: ApiGatewayRestApi
-        ValidateRequestBody: true
-        ValidateRequestParameters: false
-        
-    # S3 Bucket
-    # AttachmentsBucket:
-    #   Type: AWS::S3::Bucket
-    #   Properties:
-    #     BucketName: ${self:provider.environment.ATTACHMENTS_S3_BUCKET}
-    #     CorsConfiguration:
-    #       CorsRules:
-    #         - AllowedOrigins:
-    #             - '*'
-    #           AllowedHeaders:
-    #             - '*'
-    #           AllowedMethods:
-    #             - GET
-    #             - PUT
-    #             - POST
-    #             - DELETE
-    #             - HEAD
-    #           MaxAge: 3000
+        BucketName: ${self:provider.environment.IMAGES_S3_BUCKET}
+        CorsConfiguration:
+          CorsRules:
+            - AllowedOrigins:
+                - "*"
+              AllowedHeaders:
+                - "*"
+              AllowedMethods:
+                - GET
+                - PUT
+                - POST
+                - DELETE
+                - HEAD
+              MaxAge: 3000
 
-    # AttachmentsBucketPolicy:
-    #   Type: AWS::S3::BucketPolicy
-    #   Properties:
-    #     PolicyDocument:
-    #       Id: MyPolicy
-    #       Version: "2012-10-17"
-    #       Statement:
-    #         - Sid: PublicReadForGetBucketObjects
-    #           Effect: Allow
-    #           Principal: '*'
-    #           Action: 's3:GetObject'
-    #           Resource: 'arn:aws:s3:::${self:provider.environment.ATTACHMENTS_S3_BUCKET}/*'
-    #     Bucket: !Ref AttachmentsBucket
+    BucketPolicy:
+      Type: AWS::S3::BucketPolicy
+      Properties:
+        PolicyDocument:
+          Id: MyPolicy
+          Version: "2012-10-17"
+          Statement:
+            - Sid: PublicReadForGetBucketObjects
+              Effect: Allow
+              Principal: "*"
+              Action:
+                - s3:GetObject
+              Resource: "arn:aws:s3:::${self:provider.environment.IMAGES_S3_BUCKET}/*"
+        Bucket: !Ref AttachmentsBucket
