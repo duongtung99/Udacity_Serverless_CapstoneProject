@@ -1,47 +1,46 @@
 import * as uuid from 'uuid'
+import { AnimalItem } from '../models/AnimalItem'
+import { AnimalUpdate } from '../models/AnimalUpdate'
 
-import { MealItem } from '../models/MealItem'
-import { MealUpdate } from '../models/MealUpdate'
+import { AnimalAccess } from '../dataLayer/animalsAccess'
 
-import { MealAccess } from '../dataLayer/animalsAccess'
-
-import { CreateMealRequest } from '../requests/CreateAnimalRequest'
-import { UpdateMealRequest } from '../requests/UpdateAnimalRequest'
+import { CreateAnimalRequest } from '../requests/CreateAnimalRequest'
+import { UpdateAnimalRequest } from '../requests/UpdateAnimalRequest'
 
 import { parseUserId } from '../auth/utils'
 
-const mealAccess = new MealAccess()
+const animalAccess = new AnimalAccess()
 
-export async function getAllMeals(jwtToken: string): Promise<MealItem[]> {
+export async function getAllAnimals(jwtToken: string): Promise<AnimalItem[]> {
   const userId = parseUserId(jwtToken) // Use pre-made function
-  return mealAccess.getAllMeals(userId)
+  return animalAccess.getAllAnimals(userId)
 }
 
-export async function createMeal(createMealRequest: CreateMealRequest, jwtToken: string): Promise<MealItem> {
+export async function createAnimal(createAnimalRequest: CreateAnimalRequest, jwtToken: string): Promise<AnimalItem> {
   const userId = parseUserId(jwtToken) // Use pre-made function
   const itemId = uuid.v4()
 
-  return await mealAccess.createMeal({
-    mealId: itemId,
+  return await animalAccess.createAnimal({
+    animalId: itemId,
     userId: userId,
-    name: createMealRequest.name,
-    dayOfWeek: createMealRequest.dayOfWeek,
-    createdAt: new Date().toISOString(),
-    eaten: false
+    name: createAnimalRequest.name,
+    typeOfAnimal: createAnimalRequest.typeOfAnimal,
+    statusAnimal:true,
+    createdAt: new Date().toISOString()
   })
 }
 
-export async function updateMeal(mealId: string, updateMealRequest: UpdateMealRequest, jwtToken: string): Promise<MealUpdate> {
+export async function updateAnimal(animalId: string, updateanimalRequest: UpdateAnimalRequest, jwtToken: string): Promise<AnimalUpdate> {
   const userId = parseUserId(jwtToken) // Use pre-made function
-  return await mealAccess.updateMeal(mealId, userId, updateMealRequest)
+  return await animalAccess.updateAnimal(animalId, userId, updateanimalRequest)
 }
 
-export async function deleteMeal(mealId: string, jwtToken: string): Promise<void> {
+export async function deleteAnimal(animalId: string, jwtToken: string): Promise<void> {
   const userId = parseUserId(jwtToken) // Use pre-made function
-  return await mealAccess.deleteMeal(mealId, userId)
+  return await animalAccess.deleteAnimal(animalId, userId)
 }
 
-export async function setAttachmentUrl(mealId: string, attachmentUrl: string, jwtToken: string): Promise<void> {
+export async function setAttachmentUrl(animalId: string, attachmentUrl: string, jwtToken: string): Promise<void> {
   const userId = parseUserId(jwtToken) // Use pre-made function
-  return await mealAccess.setAttachmentUrl(mealId, userId, attachmentUrl)
+  return await animalAccess.setAttachmentUrl(animalId, userId, attachmentUrl)
 }

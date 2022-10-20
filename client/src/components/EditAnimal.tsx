@@ -1,7 +1,7 @@
 import * as React from 'react'
 import { Form, Button } from 'semantic-ui-react'
 import Auth from '../auth/Auth'
-import { getUploadUrl, uploadFile } from '../api/meals-api'
+import { getUploadUrl, uploadFile } from '../api/animals-api'
 
 enum UploadState {
   NoUpload,
@@ -9,25 +9,25 @@ enum UploadState {
   UploadingFile,
 }
 
-interface EditMealProps {
+interface EditAnimalProps {
   match: {
     params: {
-      mealId: string
+      animalId: string
     }
   }
   auth: Auth
 }
 
-interface EditMealState {
+interface EditAnimalState {
   file: any
   uploadState: UploadState
 }
 
-export class EditMeal extends React.PureComponent<
-  EditMealProps,
-  EditMealState
+export class EditAnimal extends React.PureComponent<
+  EditAnimalProps,
+  EditAnimalState
 > {
-  state: EditMealState = {
+  state: EditAnimalState = {
     file: undefined,
     uploadState: UploadState.NoUpload
   }
@@ -51,9 +51,11 @@ export class EditMeal extends React.PureComponent<
       }
 
       this.setUploadState(UploadState.FetchingPresignedUrl)
-      const uploadUrl = await getUploadUrl(this.props.auth.getIdToken(), this.props.match.params.mealId)
-
+      const uploadUrl = await getUploadUrl(this.props.auth.getIdToken(), this.props.match.params.animalId)
+      console.log(uploadUrl);
       this.setUploadState(UploadState.UploadingFile)
+      console.log('Starting upload file');
+      
       await uploadFile(uploadUrl, this.state.file)
 
       alert('File was uploaded!')

@@ -1,10 +1,11 @@
 import * as AWS from 'aws-sdk'
 import * as AWSXRay from 'aws-xray-sdk'
 import { DocumentClient } from 'aws-sdk/clients/dynamodb'
+import { createLogger } from '../utils/logger'
+import { AnimalItem } from '../models/AnimalItem'
+import { AnimalUpdate } from '../models/AnimalUpdate'
 
-import { MealItem } from '../models/MealItem'
-import { MealUpdate } from '../models/MealUpdate'
-
+const logger = createLogger('AnimalsAccessLayer')
 const XAWS = AWSXRay.captureAWS(AWS)
 
 const s3 = new XAWS.S3({
@@ -13,65 +14,65 @@ const s3 = new XAWS.S3({
 
 const bucketName = process.env.IMAGES_S3_BUCKET
 
-export class MealAccess {
+export class AnimalAccess {
 
   constructor(
     private readonly docClient: DocumentClient = createDynamoDBClient(),
-    private readonly mealsTable = process.env.MEALS_TABLE,
+    private readonly animalsTable = process.env.ANIMALS_TABLE,
     private readonly userIdIndex = process.env.USER_ID_INDEX
   ) { }
 
-  async getAllMeals(userId: string): Promise<MealItem[]> {
-    console.log('Getting all meals')
+  async getAllAnimals(userId: string): Promise<AnimalItem[]> {
+    logger.info(`Start getting all animals for user ${userId} from ${this.animalsTable} table`)
 
     const result = await this.docClient.query({
-      TableName: this.mealsTable,
+      TableName: this.animalsTable,
       IndexName: this.userIdIndex, // For faster query retrival
       KeyConditionExpression: 'userId = :userId',
       ExpressionAttributeValues: { ':userId': userId },
-      ScanIndexForward: false // To retrive latest meals at the top
+      ScanIndexForward: false // To retrive latest animals at the top
     }).promise()
 
     const items = result.Items
-    return items as MealItem[]
+    return items as AnimalItem[]
   }
 
-  async createMeal(mealItem: MealItem): Promise<MealItem> {
+  async createAnimal(animalItem: AnimalItem): Promise<AnimalItem> {
     await this.docClient.put({
-      TableName: this.mealsTable,
-      Item: mealItem
+      TableName: this.animalsTable,
+      Item: animalItem
     }).promise()
 
-    return mealItem
+    return animalItem
   }
 
-  async updateMeal(mealId: string, userId: string, mealUpdate: MealUpdate): Promise<MealUpdate> {
+  async updateAnimal(animalId: string, userId: string, animalUpdate: AnimalUpdate): Promise<AnimalUpdate> {
     await this.docClient.update({
-      TableName: this.mealsTable,
+      TableName: this.animalsTable,
       Key: {
-        mealId,
+        animalId,
         userId
       },
-      UpdateExpression: 'set #n = :name, eaten = :eaten, dayOfWeek = :dayOfWeek',
+      UpdateExpression: 'set #n = :name, statusAnimal = :statusAnimal, typeOfAnimal = :typeOfAnimal',
       ExpressionAttributeValues: {
-        ':name': mealUpdate.name,
-        ':eaten': mealUpdate.eaten,
-        ':dayOfWeek': mealUpdate.dayOfWeek
+        ':name': animalUpdate.name,
+        ':statusAnimal': animalUpdate.statusAnimal,
+        ':typeOfAnimal': animalUpdate.typeOfAnimal
       },
       ExpressionAttributeNames: { '#n': 'name' },
       ReturnValues: 'UPDATED_NEW',
     }).promise()
 
-    return mealUpdate
+    return animalUpdate
   }
 
-  async deleteMeal(mealId: string, userId: string): Promise<void> {
+  async deleteAnimal(animalId: string, userId: string): Promise<void> {
     // DONE: If item has image, delete attached image from s3
-    // Get MEAL item of interest
+    // Get animal item of interest
     const result = await this.docClient.get({
-      TableName: this.mealsTable,
+      TableName: this.animalsTable,
       Key: {
-        mealId,
+        animalId,
         userId
       }
     }).promise()
@@ -81,30 +82,29 @@ export class MealAccess {
         // Get ending of URL
         const imageUrl = result.Item.attachmentUrl
         const imageKey = imageUrl.substring(imageUrl.lastIndexOf('/') + 1)
-
-        console.log('Deleting attached image from s3: ', imageKey)
-
+        logger.info('Deleting attached image from s3: ', imageKey)
         // Use function to delete image from s3
         deleteS3AttachedImage(bucketName, imageKey)
       }
     }
 
     await this.docClient.delete({
-      TableName: this.mealsTable,
+      TableName: this.animalsTable,
       Key: {
-        mealId,
+        animalId,
         userId
       }
     }).promise()
   }
 
-  async setAttachmentUrl(mealId: string, userId: string, attachmentUrl: string): Promise<void> {
+  async setAttachmentUrl(animalId: string, userId: string, attachmentUrl: string): Promise<void> {
     // DONE: If pre-existing image, delete attached image from s3
-    // Get MEAL item of interest
+    // Get animal item of interest
+    logger.info('Starting set attachment url')
     const result = await this.docClient.get({
-      TableName: this.mealsTable,
+      TableName: this.animalsTable,
       Key: {
-        mealId,
+        animalId,
         userId
       }
     }).promise()
@@ -114,18 +114,16 @@ export class MealAccess {
         // Get ending of URL
         const imageUrl = result.Item.attachmentUrl
         const imageKey = imageUrl.substring(imageUrl.lastIndexOf('/') + 1)
-
-        console.log('Deleting attached image from s3: ', imageKey)
-
+        logger.info('Deleting attached image from s3: ', imageKey)
         // Use function to delete image from s3
         deleteS3AttachedImage(bucketName, imageKey)
       }
     }
 
     await this.docClient.update({
-      TableName: this.mealsTable,
+      TableName: this.animalsTable,
       Key: {
-        mealId,
+        animalId,
         userId
       },
       UpdateExpression: 'set attachmentUrl = :attachmentUrl',
@@ -139,7 +137,7 @@ export class MealAccess {
 
 function createDynamoDBClient() {
   if (process.env.IS_OFFLINE) {
-    console.log('Creating a local DynamoDB instance')
+    logger.info('Creating a local DynamoDB instance ')
     return new XAWS.DynamoDB.DocumentClient({
       region: 'localhost',
       endpoint: 'http://localhost:8000'
@@ -152,7 +150,7 @@ function createDynamoDBClient() {
 // Function deletes an object from an s3 bucket
 function deleteS3AttachedImage(bucket: string, key: string) {
   s3.deleteObject({ Bucket: bucket, Key: key }, function (err, data) {
-    if (err) console.log(err, err.stack) // an error occurred
-    else console.log(data) // successful response
+    if (err) logger.info(err, err.stack) // an error occurred
+    else logger.info(data) // successful response
   })
 }

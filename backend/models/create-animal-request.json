@@ -4,20 +4,20 @@
   "type": "object",
   "properties": {
     "name": {
-      "type": "string"
-      
+      "type": "string",
+      "minLength":2
     },
     "typeOfAnimal": {
       "type": "string"
     },
-    "status": {
+    "statusAnimal": {
       "type": "boolean"
     }
   },
   "required": [
     "name",
     "typeOfAnimal",
-    "status"
+    "statusAnimal"
   ],
   "additionalProperties": false
 }

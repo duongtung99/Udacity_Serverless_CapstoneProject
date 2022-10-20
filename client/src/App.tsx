@@ -3,10 +3,10 @@ import { Link, Route, Router, Switch } from 'react-router-dom'
 import { Grid, Menu, Segment } from 'semantic-ui-react'
 
 import Auth from './auth/Auth'
-import { EditMeal } from './components/EditMeal'
+import { EditAnimal } from './components/EditAnimal'
 import { LogIn } from './components/LogIn'
 import { NotFound } from './components/NotFound'
-import { Meals } from './components/Meals'
+import { Animals } from './components/Animals'
 
 export interface AppProps { }
 
@@ -92,15 +92,15 @@ export default class App extends Component<AppProps, AppState> {
           path="/"
           exact
           render={props => {
-            return <Meals {...props} auth={this.props.auth} />
+            return <Animals {...props} auth={this.props.auth} />
           }}
         />
 
         <Route
-          path="/meals/:mealId/edit"
+          path="/animals/:animalId/edit"
           exact
           render={props => {
-            return <EditMeal {...props} auth={this.props.auth} />
+            return <EditAnimal {...props} auth={this.props.auth} />
           }}
         />
 

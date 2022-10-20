@@ -1,22 +1,22 @@
 # Capstone Serverless Project
 
-This repo is for a simple **Meal Planner** application using AWS Lambda and Serverless framework.
+This repo is for a simple **Animal Manager** application using AWS Lambda and Serverless framework.
 
 # Functionality of the application
 
-This application will allow creating/removing/updating/fetching MEAL items. Each MEAL item can optionally have an attachment image. Each user only has access to the MEAL items that he/she has created.
+This application will allow creating/removing/updating/fetching animal items. Each animal item can optionally have an attachment image. Each user only has access to the animal items that he/she has created.
 
-# MEAL items
+# Animal items
 
-The application stores MEAL items, where each MEAL item contains the following fields:
+The application stores Animal items, where each Animal item contains the following fields:
 
-* `mealId` (string) - a unique id for a MEAL item
+* `animalId` (string) - a unique id for a Animal item
 * `createdAt` (string) - date and time when an item was created
-* `name` (string) - name of a MEAL item (e.g. "Salad wrap")
-* `dayOfWeek` (string) - day of the week on which the MEAL is to be eaten (default: the day of item creation)
-* `eaten` (boolean) - true if MEAL item has been eaten, false otherwise
-* `attachmentUrl` (string) (optional) - a URL pointing to an image attached to a MEAL item
-* `userId` (string) - id of a user who created a MEAL item.
+* `name` (string) - name of a Animal item (e.g. "Salad wrap")
+* `typeofAnimal` (string) - day of the week on which the Animal is to be eaten (default: the day of item creation)
+* `statusAnimal` (boolean) - true if Animal item has been eaten, false otherwise
+* `attachmentUrl` (string) (optional) - a URL pointing to an image attached to a Animal item
+* `userId` (string) - id of a user who created a Animal item.
 
 # Functions implemented
 
@@ -24,15 +24,15 @@ The `serverless.yml` file has the following functions:
 
 * `Auth` - a custom authorizer for API Gateway that is added to all other functions.
 
-* `GetMeals` -  returns all MEALs for a current user. A user id can be extracted from a JWT token that is sent by the frontend.
+* `GetAnimals` -  returns all Animals for a current user. A user id can be extracted from a JWT token that is sent by the frontend.
 
-* `CreateMeal` - creates a new MEAL for a current user. The shape of data sent by a client application to this function can be found in the `CreateMealRequest.ts` file. It receives a new MEAL item to be created in JSON format.
+* `CreateAnimal` - creates a new Animal for a current user. The shape of data sent by a client application to this function can be found in the `CreateAnimalRequest.ts` file. It receives a new Animal item to be created in JSON format.
 
-* `UpdateMeal` - updates a MEAL item created by a current user. The shape of data sent by a client application to this function can be found in the `UpdateMealRequest.ts` file. It receives an object that contains three fields that can be updated in a MEAL item. The id of an item that should be updated is passed as a URL parameter.
+* `UpdateAnimal` - updates a Animal item created by a current user. The shape of data sent by a client application to this function can be found in the `UpdateAnimalRequest.ts` file. It receives an object that contains three fields that can be updated in a Animal item. The id of an item that should be updated is passed as a URL parameter.
 
-* `DeleteMeal` - deletes a MEAL item created by a current user. Expects an id of a MEAL item to remove. Also deletes any attached image from the S3 bucket.
+* `DeleteAnimal` - deletes a Animal item created by a current user. Expects an id of a Animal item to remove. Also deletes any attached image from the S3 bucket.
 
-* `GenerateUploadUrl` - returns a pre-signed URL that can be used to upload an attachment file for a MEAL item. An id of a user can be extracted from a JWT token passed by a client. Also deletes any previously attached image from the S3 bucket to make room for new image.
+* `GenerateUploadUrl` - returns a pre-signed URL that can be used to upload an attachment file for a Animal item. An id of a user can be extracted from a JWT token passed by a client. Also deletes any previously attached image from the S3 bucket to make room for new image.
 
 # Frontend
 
@@ -64,11 +64,11 @@ logger.info('User was authorized', {
 
 ## Local Secondary Index
 
-To store MEAL items, a DynamoDB table with local secondary index(es) has been used.
+To store Animal items, a DynamoDB table with local secondary index(es) has been used.
 
 ```yml
 
-MealsTable:
+AnimalsTable:
   Type: AWS::DynamoDB::Table
   Properties:
     AttributeDefinitions:
@@ -84,7 +84,7 @@ MealsTable:
       - AttributeName: sortKey
         KeyType: RANGE
     BillingMode: PAY_PER_REQUEST
-    TableName: ${self:provider.environment.MEALS_TABLE}
+    TableName: ${self:provider.environment.Animals_TABLE}
     LocalSecondaryIndexes:
       - IndexName: ${self:provider.environment.INDEX_NAME}
         KeySchema:
@@ -135,7 +135,3 @@ cd client
 npm install
 npm run start
 ```
-
-# Postman collection
-
-There is a provided Postman collection that contains sample requests in this project.

@@ -5,19 +5,18 @@
   "properties": {
     "name": {
       "type": "string"
-      
     },
     "typeOfAnimal": {
       "type": "string"
     },
-    "status": {
+    "statusAnimal": {
       "type": "boolean"
     }
   },
   "required": [
     "name",
     "typeOfAnimal",
-    "status"
+    "statusAnimal"
   ],
   "additionalProperties": false
 }
