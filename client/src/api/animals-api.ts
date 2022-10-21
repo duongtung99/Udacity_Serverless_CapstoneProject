@@ -24,7 +24,6 @@ export async function createAnimal(
   const response = await Axios.post(`${apiEndpoint}/animals`,  JSON.stringify(newAnimal), {
     headers: {
       'Content-Type': 'application/json',
-      'Access-Control-Allow-Origin':'*',
       'Authorization': `Bearer ${idToken}`
     }
   })
